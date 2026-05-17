@@ -61,7 +61,7 @@ router.put('/', authMiddleware, async (req, res) => {
     if (location !== undefined) user.location = location;
     if (targetRoles !== undefined) user.targetRoles = targetRoles;
     if (skills !== undefined) user.skills = skills;
-    if (experience !== undefined) user.experience = experience;
+    if (experience !== undefined) user.experience = experience === '' ? undefined : experience;
 
     await user.save();
 

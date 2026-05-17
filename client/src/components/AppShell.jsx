@@ -4,7 +4,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useAutomationStore } from '../store/automationStore';
 import { 
   Rocket, LayoutDashboard, Sliders, Briefcase, 
-  BookOpen, Bookmark, User, Settings, Sun, Moon, Menu, X, Shield
+  BookOpen, Bookmark, User, Settings, Sun, Moon, Menu, X, Shield, LogOut
 } from 'lucide-react';
 
 const NavItem = ({ to, icon: Icon, label, badge }) => {
@@ -130,14 +130,25 @@ export const AppShell = () => {
 
           {/* User Pill */}
           <div className="p-4 border-t border-border-default">
-            <div className="flex items-center p-2 rounded-lg bg-gray-100 dark:bg-gray-800">
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-white font-semibold text-sm">
-                {initials}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center p-2 rounded-lg bg-gray-100 dark:bg-gray-800">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-white font-semibold text-sm shrink-0">
+                  {initials}
+                </div>
+                <div className="ml-3 overflow-hidden">
+                  <p className="text-sm font-medium text-text-primary truncate">{user?.name}</p>
+                  <p className="text-xs text-primary font-medium">Free plan</p>
+                </div>
               </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-text-primary truncate w-32">{user?.name}</p>
-                <p className="text-xs text-primary font-medium">Free plan</p>
-              </div>
+              <button 
+                onClick={() => {
+                  useAuthStore.getState().logout();
+                }}
+                className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-red-600 bg-red-50 dark:bg-red-900/10 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Sign Out
+              </button>
             </div>
           </div>
         </div>
