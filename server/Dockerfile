@@ -55,10 +55,12 @@ RUN apt-get update && apt-get install -y chromium
 
 WORKDIR /usr/src/app
 
-COPY package*.json ./
+# Copy package configurations from server folder
+COPY server/package*.json ./
 RUN npm ci
 
-COPY . .
+# Copy all server files
+COPY server/ .
 
 EXPOSE 5000
 
