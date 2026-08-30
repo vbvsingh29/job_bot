@@ -179,7 +179,36 @@ async function sendDailyReportsToAllUsers() {
   console.log(`Daily digests completed. Sent ${emailsSent} emails.`);
 }
 
+async function sendDailyReportToUser(userId) {
+  const user = await User.findById(userId);
+  if (!user) throw new Error('User not found');
+
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const apps = await Application.find({
+    userId: user._id,
+    appliedAt: { $gte: startOfToday }
+  }).sort({ appliedAt: -1 });
+
+  const successApps = apps.filter(a => a.status === 'success');
+  const failedApps = apps.filter(a => a.status === 'failed');
+  const skipped = apps.filter(a => a.status === 'skipped').length;
+  
+  const results = {
+    total: apps.length,
+    success: successApps.length,
+    failed: failedApps.length,
+    skipped,
+    successApps,
+    failedApps
+  };
+
+  await sendDailyReport(user, results);
+}
+
 module.exports = {
   sendDailyReport,
-  sendDailyReportsToAllUsers
+  sendDailyReportsToAllUsers,
+  sendDailyReportToUser
 };

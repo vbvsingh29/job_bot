@@ -132,7 +132,7 @@ router.post('/login', async (req, res) => {
 // @route   GET /api/auth/me
 router.get('/me', authMiddleware, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-passwordHash');
+    const user = await User.findById(req.user.id).select('-passwordHash -naukriPasswordHash -linkedinPassword -naukriPassword');
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json(user);
   } catch (err) {
@@ -190,6 +190,35 @@ router.get('/linkedin/callback', (req, res, next) => {
   });
 });
 
+// @route   POST /api/auth/linkedin/connect
+// @desc    Connect LinkedIn credentials encrypted
+// @access  Private
+router.post('/linkedin/connect', authMiddleware, async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const cryptoUtils = require('../utils/crypto');
+    user.linkedinEmail = email;
+    user.linkedinPassword = cryptoUtils.encrypt(password);
+    user.linkedinConnected = true;
+    user.linkedinName = email; // Store email as connection reference name
+    user.linkedinToken = email; // For backwards compatibility
+
+    await user.save();
+
+    res.json({ success: true, message: 'LinkedIn credentials connected successfully!' });
+  } catch (err) {
+    console.error('LinkedIn connection error:', err);
+    res.status(500).json({ message: 'Failed to connect LinkedIn credentials' });
+  }
+});
+
 // @route   POST /api/auth/naukri/connect
 // @desc    Connect Naukri credentials encrypted
 // @access  Private
@@ -203,12 +232,19 @@ router.post('/naukri/connect', authMiddleware, async (req, res) => {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
+    const cryptoUtils = require('../utils/crypto');
+    
+    // Store encrypted password for Puppeteer bot usage
+    user.naukriEmail = email;
+    user.naukriPassword = cryptoUtils.encrypt(password);
+    user.naukriConnected = true;
+    user.naukriToken = email; // Keep email as connection reference
+
+    // Also keep bcrypt hash just in case some other logic checks it
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash(password, salt);
-
-    user.naukriToken = email; // Stored email as connection token reference
     user.naukriPasswordHash = hash;
-    user.naukriConnected = true;
+
     await user.save();
 
     res.json({ success: true, message: 'Naukri credentials connected successfully!' });
@@ -229,11 +265,15 @@ router.delete('/linkedin', authMiddleware, async (req, res) => {
     user.linkedinToken = null;
     user.linkedinConnected = false;
     user.linkedinName = null;
+    user.linkedinEmail = null;
+    user.linkedinPassword = null;
     await user.save();
 
     const updatedUser = user.toObject();
     delete updatedUser.passwordHash;
     delete updatedUser.naukriPasswordHash;
+    delete updatedUser.linkedinPassword;
+    delete updatedUser.naukriPassword;
 
     res.json(updatedUser);
   } catch (err) {
@@ -253,11 +293,15 @@ router.delete('/naukri', authMiddleware, async (req, res) => {
     user.naukriToken = null;
     user.naukriPasswordHash = null;
     user.naukriConnected = false;
+    user.naukriEmail = null;
+    user.naukriPassword = null;
     await user.save();
 
     const updatedUser = user.toObject();
     delete updatedUser.passwordHash;
     delete updatedUser.naukriPasswordHash;
+    delete updatedUser.linkedinPassword;
+    delete updatedUser.naukriPassword;
 
     res.json(updatedUser);
   } catch (err) {

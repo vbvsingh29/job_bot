@@ -4,7 +4,7 @@ const Application = require('../models/Application');
 const delay = (min, max) => new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * (max - min + 1) + min)));
 
 async function runNaukriBot(config) {
-  const { skills, location, maxJobs, userId } = config;
+  const { email, password, skills, location, maxJobs, userId } = config;
   const results = { success: 0, failed: 0, skipped: 0, applications: [] };
 
   const browser = await puppeteer.launch({
@@ -31,15 +31,15 @@ async function runNaukriBot(config) {
       throw new Error('captcha_detected');
     }
 
-    // Fallback login for dev
-    const testEmail = process.env.NAUKRI_TEST_EMAIL;
-    const testPass = process.env.NAUKRI_TEST_PASS;
+    // Determine login credentials (config first, fallback to env)
+    const loginEmail = email || process.env.NAUKRI_TEST_EMAIL;
+    const loginPass = password || process.env.NAUKRI_TEST_PASS;
     
-    if (testEmail && testPass) {
+    if (loginEmail && loginPass) {
       await page.waitForSelector('#usernameField', { timeout: 10000 }).catch(() => null);
       if (await page.$('#usernameField')) {
-        await page.type('#usernameField', testEmail, { delay: 50 });
-        await page.type('#passwordField', testPass, { delay: 50 });
+        await page.type('#usernameField', loginEmail, { delay: 50 });
+        await page.type('#passwordField', loginPass, { delay: 50 });
         
         const loginBtn = await page.$('button[type="submit"]');
         if (loginBtn) {
@@ -52,7 +52,7 @@ async function runNaukriBot(config) {
         throw new Error('Login form not found');
       }
     } else {
-      console.log('No test credentials provided, relying on existing session (which is not implemented yet).');
+      console.log('No credentials provided for Naukri login.');
       throw new Error('missing_credentials');
     }
 

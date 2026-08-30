@@ -97,7 +97,7 @@ router.get('/users', async (req, res) => {
     }
 
     const [users, total] = await Promise.all([
-      User.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).select('-passwordHash -naukriPasswordHash').lean(),
+      User.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).select('-passwordHash -naukriPasswordHash -linkedinPassword -naukriPassword').lean(),
       User.countDocuments(query)
     ]);
 
@@ -131,7 +131,7 @@ router.get('/users', async (req, res) => {
 // GET /api/admin/users/:id
 router.get('/users/:id', async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select('-passwordHash -naukriPasswordHash').lean();
+    const user = await User.findById(req.params.id).select('-passwordHash -naukriPasswordHash -linkedinPassword -naukriPassword').lean();
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const [recentApps, config] = await Promise.all([
@@ -161,6 +161,8 @@ router.patch('/users/:id', async (req, res) => {
     const updated = user.toObject();
     delete updated.passwordHash;
     delete updated.naukriPasswordHash;
+    delete updated.linkedinPassword;
+    delete updated.naukriPassword;
     res.json(updated);
   } catch (err) {
     console.error('Admin user update error:', err);

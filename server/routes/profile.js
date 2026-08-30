@@ -68,6 +68,9 @@ router.put('/', authMiddleware, async (req, res) => {
     // Exclude password hash from response
     const updatedUser = user.toObject();
     delete updatedUser.passwordHash;
+    delete updatedUser.naukriPasswordHash;
+    delete updatedUser.linkedinPassword;
+    delete updatedUser.naukriPassword;
 
     res.json(updatedUser);
   } catch (err) {

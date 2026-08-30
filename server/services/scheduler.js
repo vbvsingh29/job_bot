@@ -1,41 +1,59 @@
 const cron = require('node-cron');
 const runner = require('./runner');
 const emailService = require('./emailService');
+const AutomationConfig = require('../models/AutomationConfig');
 
 function initScheduler() {
-  console.log('Initializing node-cron scheduler...');
+  console.log('Initializing node-cron scheduler (1-minute polling interval)...');
 
-  // Job 1 — Daily bot runner at 9:00 AM
-  cron.schedule('0 9 * * *', () => {
-    console.log(`[${new Date().toISOString()}] CRON: Triggering daily bot runner`);
-    // Fire and forget
-    runner.runForAllUsers().catch(err => {
-      console.error('CRON: Error in runForAllUsers', err);
-    });
-  });
+  // Poll every minute to find matching user schedules
+  cron.schedule('* * * * *', async () => {
+    const now = new Date();
+    // Get hours and minutes in HH:MM format (local time)
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const timeStr = `${hours}:${minutes}`;
 
-  // Job 2 — Daily email digest at 9:00 PM
-  cron.schedule('0 21 * * *', () => {
-    console.log(`[${new Date().toISOString()}] CRON: Triggering daily email digest`);
-    // Fire and forget
-    emailService.sendDailyReportsToAllUsers().catch(err => {
-      console.error('CRON: Error in sendDailyReportsToAllUsers', err);
-    });
+    try {
+      // 1. Check for users scheduled to run the bot at this exact minute
+      const configsToRun = await AutomationConfig.find({ active: true, scheduledTime: timeStr });
+      if (configsToRun.length > 0) {
+        console.log(`[${now.toISOString()}] Scheduler: Found ${configsToRun.length} users scheduled to run bot at ${timeStr}`);
+        for (const config of configsToRun) {
+          console.log(`Scheduler: Triggering bot for user ${config.userId}`);
+          runner.runForUser(config.userId).catch(err => {
+            console.error(`Scheduler error running bot for user ${config.userId}:`, err);
+          });
+        }
+      }
+
+      // 2. Check for users scheduled to receive their email report at this exact minute
+      const configsToReport = await AutomationConfig.find({ active: true, scheduledReportTime: timeStr });
+      if (configsToReport.length > 0) {
+        console.log(`[${now.toISOString()}] Scheduler: Found ${configsToReport.length} users scheduled for email digests at ${timeStr}`);
+        for (const config of configsToReport) {
+          console.log(`Scheduler: Sending email report to user ${config.userId}`);
+          emailService.sendDailyReportToUser(config.userId).catch(err => {
+            console.error(`Scheduler error sending email to user ${config.userId}:`, err);
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Scheduler polling error:', err);
+    }
   });
 }
 
 // Helper to calculate next run times for admin status
 function getStatus() {
-  // node-cron doesn't have an easy native way to get next date without parsing the cron string manually
-  // This is a simple mock return for the admin route
   return {
     botRunner: {
-      cron: '0 9 * * *',
-      description: 'Daily bot runner at 9:00 AM'
+      cron: '* * * * *',
+      description: 'Dynamic user-specific schedules polled every minute'
     },
     emailDigest: {
-      cron: '0 21 * * *',
-      description: 'Daily email digest at 9:00 PM'
+      cron: '* * * * *',
+      description: 'Dynamic user-specific email report schedules polled every minute'
     }
   };
 }

@@ -4,7 +4,7 @@ const Application = require('../models/Application');
 const delay = (min, max) => new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * (max - min + 1) + min)));
 
 async function runLinkedInBot(config) {
-  const { accessToken, skills, location, maxJobs, userId } = config;
+  const { email, password, skills, location, maxJobs, userId } = config;
   const results = { success: 0, failed: 0, skipped: 0, applications: [] };
 
   const browser = await puppeteer.launch({
@@ -31,23 +31,22 @@ async function runLinkedInBot(config) {
       throw new Error('captcha_detected');
     }
 
-    // Fallback login for dev
-    const testEmail = process.env.LINKEDIN_EMAIL;
-    const testPass = process.env.LINKEDIN_PASS;
+    // Determine login credentials (config first, fallback to env)
+    const loginEmail = email || process.env.LINKEDIN_EMAIL;
+    const loginPass = password || process.env.LINKEDIN_PASS;
     
-    if (testEmail && testPass) {
+    if (loginEmail && loginPass) {
       await page.waitForSelector('#username', { timeout: 10000 }).catch(() => null);
       if (await page.$('#username')) {
-        await page.type('#username', testEmail, { delay: 50 });
-        await page.type('#password', testPass, { delay: 50 });
+        await page.type('#username', loginEmail, { delay: 50 });
+        await page.type('#password', loginPass, { delay: 50 });
         await page.click('[type="submit"]');
         await page.waitForNavigation({ waitUntil: 'networkidle2' });
       } else {
         throw new Error('Login form not found');
       }
     } else {
-      // TODO: Handle OAuth session cookie injection when Phase 10 is ready
-      console.log('No test credentials provided, relying on existing session (which is not implemented yet).');
+      console.log('No credentials provided for LinkedIn login.');
       throw new Error('missing_credentials');
     }
 

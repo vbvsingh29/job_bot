@@ -25,9 +25,24 @@ async function runForUser(userId) {
     // 1. LinkedIn Bot
     if (user.linkedinConnected || (process.env.LINKEDIN_EMAIL && process.env.LINKEDIN_PASS)) {
       console.log(`Starting LinkedIn bot for user ${userId}...`);
+      
+      let email = process.env.LINKEDIN_EMAIL;
+      let password = process.env.LINKEDIN_PASS;
+      
+      if (user.linkedinConnected && user.linkedinEmail && user.linkedinPassword) {
+        const cryptoUtils = require('../utils/crypto');
+        const decryptedEmail = user.linkedinEmail;
+        const decryptedPassword = cryptoUtils.decrypt(user.linkedinPassword);
+        if (decryptedEmail && decryptedPassword) {
+          email = decryptedEmail;
+          password = decryptedPassword;
+        }
+      }
+      
       try {
         linkedinResults = await runLinkedInBot({
-          accessToken: null, // Full OAuth coming in Phase 10
+          email: email,
+          password: password,
           skills: config.skills,
           location: config.location,
           maxJobs: config.maxJobsPerDay,
@@ -49,8 +64,24 @@ async function runForUser(userId) {
     // 2. Naukri Bot
     if (user.naukriConnected || (process.env.NAUKRI_TEST_EMAIL && process.env.NAUKRI_TEST_PASS)) {
       console.log(`Starting Naukri bot for user ${userId}...`);
+      
+      let email = process.env.NAUKRI_TEST_EMAIL;
+      let password = process.env.NAUKRI_TEST_PASS;
+      
+      if (user.naukriConnected && user.naukriEmail && user.naukriPassword) {
+        const cryptoUtils = require('../utils/crypto');
+        const decryptedEmail = user.naukriEmail;
+        const decryptedPassword = cryptoUtils.decrypt(user.naukriPassword);
+        if (decryptedEmail && decryptedPassword) {
+          email = decryptedEmail;
+          password = decryptedPassword;
+        }
+      }
+      
       try {
         naukriResults = await runNaukriBot({
+          email: email,
+          password: password,
           skills: config.skills,
           location: config.location,
           maxJobs: config.maxJobsPerDay,
